@@ -1,0 +1,316 @@
+{
+  "experiment": "Same saved D455 first frame of the white SR300 step target; FP32, 252 hypotheses, 5 registration iterations, batch size 8.",
+  "setup_stages": {
+    "setup/setup.mesh": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 1.0087052499875426,
+      "exclusive_seconds": 1.0087052499875426
+    },
+    "setup/setup.rotation_grid": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.20119108306244016,
+      "exclusive_seconds": 0.20119108306244016
+    },
+    "setup/setup.scorer": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.177336708875373,
+      "exclusive_seconds": 0.177336708875373
+    },
+    "setup/setup.refiner": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.12292320793494582,
+      "exclusive_seconds": 0.12292320793494582
+    },
+    "setup": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 1.5119870000053197,
+      "exclusive_seconds": 0.0018307501450181007
+    }
+  },
+  "baseline_stage_profile": {
+    "register/depth_preprocess": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.01195491710677743,
+      "exclusive_seconds": 0.01195491710677743
+    },
+    "register/candidates": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.0018355417996644974,
+      "exclusive_seconds": 0.0018355417996644974
+    },
+    "register/refine/inputs_to_device": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.0032537500374019146,
+      "exclusive_seconds": 0.0032537500374019146
+    },
+    "register/refine/prepare/crop_geometry": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.006823916919529438,
+      "exclusive_seconds": 0.006823916919529438
+    },
+    "register/refine/prepare/render/poses_to_cpu": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.00521937501616776,
+      "exclusive_seconds": 0.00521937501616776
+    },
+    "register/refine/prepare/render/rasterize_cpu": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 6.711542333010584,
+      "exclusive_seconds": 6.711542333010584
+    },
+    "register/refine/prepare/render/outputs_to_device": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.2017442488577217,
+      "exclusive_seconds": 0.2017442488577217
+    },
+    "register/refine/prepare/render": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 6.920358916046098,
+      "exclusive_seconds": 0.0018529591616243124
+    },
+    "register/refine/prepare/warp": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.23691187496297061,
+      "exclusive_seconds": 0.23691187496297061
+    },
+    "register/refine/prepare/normalize": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.2565450416877866,
+      "exclusive_seconds": 0.2565450416877866
+    },
+    "register/refine/prepare": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 7.533403082285076,
+      "exclusive_seconds": 0.11276333266869187
+    },
+    "register/refine/network": {
+      "calls": 160,
+      "failed_calls": 0,
+      "inclusive_seconds": 12.096904079196975,
+      "exclusive_seconds": 12.096904079196975
+    },
+    "register/refine/pose_update": {
+      "calls": 160,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.15596725442446768,
+      "exclusive_seconds": 0.15596725442446768
+    },
+    "register/refine": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 19.920998667133972,
+      "exclusive_seconds": 0.13147050119005144
+    },
+    "register/score/inputs_to_device": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.000826291972771287,
+      "exclusive_seconds": 0.000826291972771287
+    },
+    "register/score/prepare/crop_geometry": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.0007220420520752668,
+      "exclusive_seconds": 0.0007220420520752668
+    },
+    "register/score/prepare/render/poses_to_cpu": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.000399499898776412,
+      "exclusive_seconds": 0.000399499898776412
+    },
+    "register/score/prepare/render/rasterize_cpu": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 1.6131546250544488,
+      "exclusive_seconds": 1.6131546250544488
+    },
+    "register/score/prepare/render/outputs_to_device": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.036380707984790206,
+      "exclusive_seconds": 0.036380707984790206
+    },
+    "register/score/prepare/render": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 1.6502578749787062,
+      "exclusive_seconds": 0.0003230420406907797
+    },
+    "register/score/prepare/warp": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.05396595783531666,
+      "exclusive_seconds": 0.05396595783531666
+    },
+    "register/score/prepare/normalize": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.9221222079358995,
+      "exclusive_seconds": 0.9221222079358995
+    },
+    "register/score/prepare": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 2.644749625120312,
+      "exclusive_seconds": 0.017681542318314314
+    },
+    "register/score/encode": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 2.0621680829208344,
+      "exclusive_seconds": 2.0621680829208344
+    },
+    "register/score/cross_attention": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.0019923339132219553,
+      "exclusive_seconds": 0.0019923339132219553
+    },
+    "register/score": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 4.724875957937911,
+      "exclusive_seconds": 0.015139624010771513
+    },
+    "register": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 24.817277499940246,
+      "exclusive_seconds": 0.15761241596192122
+    }
+  },
+  "runs": {
+    "native-baseline": {
+      "device": "mps",
+      "refiner_backend": "torch",
+      "compute_units": null,
+      "hypotheses": 252,
+      "estimation_iterations": 5,
+      "batch_size": 8,
+      "runs": [
+        {
+          "index": 0,
+          "instrumented": false,
+          "seconds": 28.243744832929224,
+          "selected_candidate": 75
+        },
+        {
+          "index": 1,
+          "instrumented": false,
+          "seconds": 25.019679500022903,
+          "selected_candidate": 75
+        },
+        {
+          "index": 2,
+          "instrumented": true,
+          "seconds": 24.81730549992062,
+          "selected_candidate": 75
+        }
+      ]
+    },
+    "native-baseline-repeat": {
+      "device": "mps",
+      "refiner_backend": "torch",
+      "compute_units": null,
+      "hypotheses": 252,
+      "estimation_iterations": 5,
+      "batch_size": 8,
+      "runs": [
+        {
+          "index": 0,
+          "instrumented": false,
+          "seconds": 28.715703916968778,
+          "selected_candidate": 75
+        },
+        {
+          "index": 1,
+          "instrumented": false,
+          "seconds": 24.863752332981676,
+          "selected_candidate": 75
+        }
+      ]
+    },
+    "native-coreml-gpu": {
+      "device": "mps",
+      "refiner_backend": "coreml",
+      "compute_units": "CPU_AND_GPU",
+      "hypotheses": 252,
+      "estimation_iterations": 5,
+      "batch_size": 8,
+      "runs": [
+        {
+          "index": 0,
+          "instrumented": false,
+          "seconds": 24.53466112515889,
+          "selected_candidate": 75
+        },
+        {
+          "index": 1,
+          "instrumented": false,
+          "seconds": 24.09882270800881,
+          "selected_candidate": 75
+        },
+        {
+          "index": 2,
+          "instrumented": true,
+          "seconds": 23.89893158292398,
+          "selected_candidate": 75
+        }
+      ]
+    },
+    "native-coreml-all": {
+      "device": "mps",
+      "refiner_backend": "coreml",
+      "compute_units": "ALL",
+      "hypotheses": 252,
+      "estimation_iterations": 5,
+      "batch_size": 8,
+      "runs": [
+        {
+          "index": 0,
+          "instrumented": false,
+          "seconds": 24.026910624932498,
+          "selected_candidate": 75
+        },
+        {
+          "index": 1,
+          "instrumented": false,
+          "seconds": 23.923378166975453,
+          "selected_candidate": 75
+        },
+        {
+          "index": 2,
+          "instrumented": true,
+          "seconds": 23.88998645800166,
+          "selected_candidate": 75
+        }
+      ]
+    }
+  },
+  "static_tracking": {
+    "protocol": "Repeated unchanged snapshot, two refinement iterations; not live-camera FPS.",
+    "steps": 30,
+    "iterations": 2,
+    "torch_median_seconds": 0.06296681251842529,
+    "coreml_all_median_seconds": 0.05771368707064539,
+    "final_pose_max_element_difference": 3.8743019104003906e-07,
+    "final_translation_difference_m": 2.1073424255447017e-08
+  }
+}

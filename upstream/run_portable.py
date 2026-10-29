@@ -1,5 +1,6 @@
 """FoundationPose model-based inference on MPS/CPU, with optional RealSense RGB-D."""
 import argparse
+from contextlib import nullcontext
 import csv
 import json
 import logging
@@ -184,6 +185,9 @@ def main():
     parser.add_argument('--mesh-scale', type=float, default=1., help='Use 0.001 for a mesh authored in millimetres.')
     parser.add_argument('--mesh-color', type=int, nargs=3, metavar=('R', 'G', 'B'), help='Override mesh appearance with an RGB color in 0–255; useful for untextured STL.')
     parser.add_argument('--device', choices=['auto', 'mps', 'cpu', 'cuda'], default='auto')
+    parser.add_argument('--refiner-backend', choices=['torch', 'coreml'], default='torch', help='Optional native Core ML refiner prototype; scoring remains PyTorch.')
+    parser.add_argument('--coreml-models', type=Path, default=ROOT / 'weights/coreml-refiner-fp32')
+    parser.add_argument('--coreml-compute-units', choices=['ALL', 'CPU_AND_GPU', 'CPU_AND_NE', 'CPU_ONLY'], default='CPU_AND_GPU')
     parser.add_argument('--batch-size', type=int, default=8)
     parser.add_argument('--max-frames', type=int, default=3, help='0 runs all frames; default is a short validation.')
     parser.add_argument('--est-iters', type=int, default=5)
@@ -194,11 +198,14 @@ def main():
     parser.add_argument('--target-fps', type=float, default=10., help='Display refresh target and measured pose throughput target.')
     parser.add_argument('--capture-fps', type=float, default=0., help='0 preserves demo nanosecond timestamps; positive values override replay rate. RealSense uses 30Hz.')
     parser.add_argument('--save-frames', action='store_true', help='Also save live/replay overlay images; can reduce display throughput.')
+    parser.add_argument('--profile-init', action='store_true', help='Write synchronized setup/first-frame stage profiles; disabled for normal speed measurements.')
     parser.add_argument('--serial', help='Optional RealSense serial number.')
     parser.add_argument('--min-depth', type=float, default=.1, help='RealSense minimum accepted depth in metres.')
     parser.add_argument('--max-depth', type=float, default=3., help='RealSense maximum accepted depth in metres.')
     parser.add_argument('--check', action='store_true', help='Check weights, inputs and selected torch backend without inference.')
     args = parser.parse_args()
+    if args.refiner_backend == 'coreml' and args.device == 'cuda':
+        parser.error('Core ML requires cpu or mps on macOS; CUDA is unsupported.')
     if args.mesh_color is not None and any(c < 0 or c > 255 for c in args.mesh_color):
         parser.error('--mesh-color requires three integers in 0–255.')
     if not np.isfinite(args.min_depth) or not np.isfinite(args.max_depth) or not 0 <= args.min_depth < args.max_depth:
@@ -211,12 +218,17 @@ def main():
         parser.error('--mesh is required for RealSense; use the model of the physical object you will track.')
     os.environ['FOUNDATIONPOSE_DEVICE'] = args.device
     os.environ['FOUNDATIONPOSE_BATCH_SIZE'] = str(args.batch_size)
+    os.environ['FOUNDATIONPOSE_REFINER_BACKEND'] = args.refiner_backend
+    os.environ['FOUNDATIONPOSE_COREML_MODELS'] = str(args.coreml_models.resolve())
+    os.environ['FOUNDATIONPOSE_COREML_COMPUTE_UNITS'] = args.coreml_compute_units
     from inference_device import DEVICE
     import torch
     mesh_path = args.mesh or args.scene / 'mesh/textured_simple.obj'
     required = [mesh_path]
     for stamp in ('2023-10-28-18-33-37', '2024-01-11-20-02-45'):
         required += [ROOT / 'weights' / stamp / name for name in ('config.yml', 'model_best.pth')]
+    if args.refiner_backend == 'coreml':
+        required.append(args.coreml_models / 'manifest.json')
     missing = [str(p) for p in required if not p.is_file()]
     if missing:
         parser.error('Missing inputs:\n' + '\n'.join(missing))
@@ -243,8 +255,13 @@ def main():
     to_origin, extents = trimesh.bounds.oriented_bounds(mesh)
     bbox = np.stack([-extents/2, extents/2])
     started = time.perf_counter()
-    est = FoundationPose(model_pts=mesh.vertices, model_normals=mesh.vertex_normals,
-                         mesh=mesh, debug=0, debug_dir=str(out))
+    from stage_profile import StageProfile, device_synchronize
+    setup_profile = StageProfile(synchronize=lambda: device_synchronize(DEVICE)) if args.profile_init else None
+    with setup_profile or nullcontext():
+        est = FoundationPose(model_pts=mesh.vertices, model_normals=mesh.vertex_normals,
+                             mesh=mesh, debug=0, debug_dir=str(out))
+    if setup_profile is not None:
+        setup_profile.save(out / 'setup_profile.json')
     print(f'Initialization: {time.perf_counter()-started:.2f}s; {len(est.rot_grid)} hypotheses; output={out}', flush=True)
     frames = demo_frames(args.scene) if args.source == 'demo' else realsense_frames(args)
     if args.source == 'realsense' or args.pipeline:
@@ -265,7 +282,11 @@ def main():
                     np.savetxt(out / 'cam_K.txt', k)
                 start = time.perf_counter()
                 if i == 0:
-                    pose = est.register(K=k, rgb=rgb, depth=depth, ob_mask=mask, iteration=args.est_iters)
+                    profiler = StageProfile(synchronize=lambda: device_synchronize(DEVICE)) if args.profile_init else None
+                    with profiler or nullcontext():
+                        pose = est.register(K=k, rgb=rgb, depth=depth, ob_mask=mask, iteration=args.est_iters)
+                    if profiler is not None:
+                        profiler.save(out / 'registration_profile.json')
                 else:
                     pose = est.track_one(K=k, rgb=rgb, depth=depth, iteration=args.track_iters)
                 if DEVICE == 'mps':

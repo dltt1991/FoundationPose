@@ -3,6 +3,7 @@
 This renderer implements perspective-correct interpolation and a z-buffer.
 It is inference-only, not a differentiable replacement for nvdiffrast.
 """
+from stage_profile import stage, profiled
 import os
 import numpy as np
 import torch
@@ -173,6 +174,7 @@ def _rasterize(pos, faces, normals, uv, tex, colors, textured, K, pose, crop,
     return rgb, depth, normal, xyz
 
 
+@profiled('render')
 def render(K=None, H=None, W=None, ob_in_cams=None, glctx=None, context=None,
            get_normal=False, mesh_tensors=None, mesh=None, projection_mat=None,
            bbox2d=None, output_size=None, use_light=False, light_color=None,
@@ -196,20 +198,23 @@ def render(K=None, H=None, W=None, ob_in_cams=None, glctx=None, context=None,
         uv = _numpy(mesh_tensors['uv']) if textured else np.zeros((len(pos), 2))
         tex = _numpy(mesh_tensors['tex'])[0] if textured else np.zeros((1, 1, 3))
         colors = np.zeros((len(pos), 3)) if textured else _numpy(mesh_tensors['vertex_color'])
-    poses = _numpy(ob_in_cams).reshape(-1, 4, 4)
-    height, width = output_size if output_size is not None else (H, W)
-    crops = np.tile([0., 0., W, H], (len(poses), 1)) if bbox2d is None else _numpy(bbox2d).reshape(-1, 4)
+    with stage('poses_to_cpu'):
+        poses = _numpy(ob_in_cams).reshape(-1, 4, 4)
+        height, width = output_size if output_size is not None else (H, W)
+        crops = np.tile([0., 0., W, H], (len(poses), 1)) if bbox2d is None else _numpy(bbox2d).reshape(-1, 4)
     if len(crops) != len(poses) or not np.isfinite(crops).all() or np.any(crops[:, 2:] <= crops[:, :2]):
         raise ValueError('Each pose requires a finite crop with positive width and height.')
     arrays = [np.ascontiguousarray(a, dtype=np.float32) for a in (pos, normals, uv, tex, colors, K)]
     pos, normals, uv, tex, colors, K = arrays
     ld = np.asarray(light_dir, dtype=np.float32)
     ld /= max(float(np.linalg.norm(ld)), 1e-12)
-    outputs = [_rasterize(pos, np.asarray(faces, dtype=np.int64), normals, uv, tex, colors, textured,
-                          K, pose.astype(np.float32), crop.astype(np.float32), int(height), int(width),
-                          use_light, ld, w_ambient, w_diffuse) for pose, crop in zip(poses, crops)]
+    with stage('rasterize_cpu'):
+        outputs = [_rasterize(pos, np.asarray(faces, dtype=np.int64), normals, uv, tex, colors, textured,
+                            K, pose.astype(np.float32), crop.astype(np.float32), int(height), int(width),
+                            use_light, ld, w_ambient, w_diffuse) for pose, crop in zip(poses, crops)]
     device = ob_in_cams.device if torch.is_tensor(ob_in_cams) else DEVICE
-    rgb, depth, normal, xyz = [torch.as_tensor(np.stack(items), device=device) for items in zip(*outputs)]
+    with stage('outputs_to_device'):
+        rgb, depth, normal, xyz = [torch.as_tensor(np.stack(items), device=device) for items in zip(*outputs)]
     if extra is not None:
         extra['xyz_map'] = xyz
     return rgb, depth, normal if get_normal or use_light else None

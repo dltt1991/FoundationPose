@@ -7,6 +7,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 
+from stage_profile import stage, profiled
 from Utils import *
 from datareader import *
 import itertools
@@ -23,20 +24,24 @@ class FoundationPose:
     self.debug_dir = debug_dir
     os.makedirs(debug_dir, exist_ok=True)
 
-    self.reset_object(model_pts, model_normals, symmetry_tfs=symmetry_tfs, mesh=mesh)
-    self.make_rotation_grid(min_n_views=40, inplane_step=60)
+    with stage('setup.mesh'):
+      self.reset_object(model_pts, model_normals, symmetry_tfs=symmetry_tfs, mesh=mesh)
+    with stage('setup.rotation_grid'):
+      self.make_rotation_grid(min_n_views=40, inplane_step=60)
 
     self.glctx = glctx
 
     if scorer is not None:
       self.scorer = scorer
     else:
-      self.scorer = ScorePredictor()
+      with stage('setup.scorer'):
+        self.scorer = ScorePredictor()
 
     if refiner is not None:
       self.refiner = refiner
     else:
-      self.refiner = PoseRefinePredictor()
+      with stage('setup.refiner'):
+        self.refiner = PoseRefinePredictor()
 
     self.pose_last = None   # Used for tracking; per the centered mesh
 
@@ -124,6 +129,7 @@ class FoundationPose:
     logging.info(f"self.rot_grid: {self.rot_grid.shape}")
 
 
+  @profiled('candidates')
   def generate_random_pose_hypo(self, K, rgb, depth, mask, scene_pts=None):
     '''
     @scene_pts: torch tensor (N,3)
@@ -156,6 +162,7 @@ class FoundationPose:
     return center.reshape(3).astype(np.float32)
 
 
+  @profiled('register')
   def register(self, K, rgb, depth, ob_mask, ob_id=None, glctx=None, iteration=5):
     '''Copmute pose from given pts to self.pcd
     @pts: (N,3) np array, downsampled scene points
@@ -170,8 +177,9 @@ class FoundationPose:
       else:
         self.glctx = glctx
 
-    depth = erode_depth(depth, radius=2, device=DEVICE)
-    depth = bilateral_filter_depth(depth, radius=2, device=DEVICE)
+    with stage('depth_preprocess'):
+      depth = erode_depth(depth, radius=2, device=DEVICE)
+      depth = bilateral_filter_depth(depth, radius=2, device=DEVICE)
 
     if self.debug>=2:
       xyz_map = depth2xyzmap(depth, K)
@@ -247,6 +255,7 @@ class FoundationPose:
     return -torch.ones(len(poses), device=DEVICE, dtype=torch.float)
 
 
+  @profiled('track')
   def track_one(self, rgb, depth, K, iteration, extra={}):
     if self.pose_last is None:
       logging.info("Please init pose by register first")

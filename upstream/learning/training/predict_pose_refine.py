@@ -7,6 +7,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 
+from stage_profile import stage, profiled
 import functools
 import os,sys,kornia
 import time
@@ -23,12 +24,14 @@ from datareader import *
 
 
 @torch.inference_mode()
+@profiled('prepare')
 def make_crop_data_batch(render_size, ob_in_cams, mesh, rgb, depth, K, crop_ratio, xyz_map, normal_map=None, mesh_diameter=None, cfg=None, glctx=None, mesh_tensors=None, dataset:PoseRefinePairH5Dataset=None):
   logging.info("Welcome make_crop_data_batch")
   H,W = depth.shape[:2]
   args = []
   method = 'box_3d'
-  tf_to_crops = compute_crop_window_tf_batch(pts=mesh.vertices, H=H, W=W, poses=ob_in_cams, K=K, crop_ratio=crop_ratio, out_size=(render_size[1], render_size[0]), method=method, mesh_diameter=mesh_diameter)
+  with stage('crop_geometry'):
+    tf_to_crops = compute_crop_window_tf_batch(pts=mesh.vertices, H=H, W=W, poses=ob_in_cams, K=K, crop_ratio=crop_ratio, out_size=(render_size[1], render_size[0]), method=method, mesh_diameter=mesh_diameter)
 
   logging.info("make tf_to_crops done")
 
@@ -60,29 +63,31 @@ def make_crop_data_batch(render_size, ob_in_cams, mesh, rgb, depth, K, crop_rati
 
   logging.info("render done")
 
-  rgbBs = kornia.geometry.transform.warp_perspective(torch.as_tensor(rgb, dtype=torch.float, device=DEVICE).permute(2,0,1)[None].expand(B,-1,-1,-1), tf_to_crops, dsize=render_size, mode='bilinear', align_corners=False)
-  if rgb_rs.shape[-2:]!=cfg['input_resize']:
-    rgbAs = kornia.geometry.transform.warp_perspective(rgb_rs, tf_to_crops, dsize=render_size, mode='bilinear', align_corners=False)
-  else:
-    rgbAs = rgb_rs
-  if xyz_map_rs.shape[-2:]!=cfg['input_resize']:
-    xyz_mapAs = kornia.geometry.transform.warp_perspective(xyz_map_rs, tf_to_crops, dsize=render_size, mode='nearest', align_corners=False)
-  else:
-    xyz_mapAs = xyz_map_rs
-  xyz_mapBs = kornia.geometry.transform.warp_perspective(torch.as_tensor(xyz_map, device=DEVICE, dtype=torch.float).permute(2,0,1)[None].expand(B,-1,-1,-1), tf_to_crops, dsize=render_size, mode='nearest', align_corners=False)  #(B,3,H,W)
+  with stage('warp'):
+    rgbBs = kornia.geometry.transform.warp_perspective(torch.as_tensor(rgb, dtype=torch.float, device=DEVICE).permute(2,0,1)[None].expand(B,-1,-1,-1), tf_to_crops, dsize=render_size, mode='bilinear', align_corners=False)
+    if rgb_rs.shape[-2:]!=cfg['input_resize']:
+      rgbAs = kornia.geometry.transform.warp_perspective(rgb_rs, tf_to_crops, dsize=render_size, mode='bilinear', align_corners=False)
+    else:
+      rgbAs = rgb_rs
+    if xyz_map_rs.shape[-2:]!=cfg['input_resize']:
+      xyz_mapAs = kornia.geometry.transform.warp_perspective(xyz_map_rs, tf_to_crops, dsize=render_size, mode='nearest', align_corners=False)
+    else:
+      xyz_mapAs = xyz_map_rs
+    xyz_mapBs = kornia.geometry.transform.warp_perspective(torch.as_tensor(xyz_map, device=DEVICE, dtype=torch.float).permute(2,0,1)[None].expand(B,-1,-1,-1), tf_to_crops, dsize=render_size, mode='nearest', align_corners=False)  #(B,3,H,W)
 
-  if cfg['use_normal']:
-    normalAs = kornia.geometry.transform.warp_perspective(normal_rs, tf_to_crops, dsize=render_size, mode='nearest', align_corners=False)
-    normalBs = kornia.geometry.transform.warp_perspective(torch.as_tensor(normal_map, dtype=torch.float, device=DEVICE).permute(2,0,1)[None].expand(B,-1,-1,-1), tf_to_crops, dsize=render_size, mode='nearest', align_corners=False)
-  else:
-    normalAs = None
-    normalBs = None
+    if cfg['use_normal']:
+      normalAs = kornia.geometry.transform.warp_perspective(normal_rs, tf_to_crops, dsize=render_size, mode='nearest', align_corners=False)
+      normalBs = kornia.geometry.transform.warp_perspective(torch.as_tensor(normal_map, dtype=torch.float, device=DEVICE).permute(2,0,1)[None].expand(B,-1,-1,-1), tf_to_crops, dsize=render_size, mode='nearest', align_corners=False)
+    else:
+      normalAs = None
+      normalBs = None
 
   logging.info("warp done")
 
   mesh_diameters = torch.ones((len(rgbAs)), dtype=torch.float, device=DEVICE)*mesh_diameter
   pose_data = BatchPoseData(rgbAs=rgbAs, rgbBs=rgbBs, depthAs=None, depthBs=None, normalAs=normalAs, normalBs=normalBs, poseA=poseA, poseB=None, xyz_mapAs=xyz_mapAs, xyz_mapBs=xyz_mapBs, tf_to_crops=tf_to_crops, Ks=Ks, mesh_diameters=mesh_diameters)
-  pose_data = dataset.transform_batch(batch=pose_data, H_ori=H, W_ori=W, bound=1)
+  with stage('normalize'):
+    pose_data = dataset.transform_batch(batch=pose_data, H_ori=H, W_ori=W, bound=1)
 
   logging.info("pose batch data done")
 
@@ -141,12 +146,24 @@ class PoseRefinePredictor:
     self.model.load_state_dict(ckpt)
 
     self.model.to(DEVICE).eval()
+    backend = os.environ.get('FOUNDATIONPOSE_REFINER_BACKEND', 'torch')
+    if backend == 'coreml':
+      if DEVICE not in ('cpu', 'mps'):
+        raise ValueError('Core ML requires cpu or mps on macOS; CUDA is unsupported.')
+      from coreml_refiner import CoreMLRefiner
+      self.model = CoreMLRefiner(
+        os.environ.get('FOUNDATIONPOSE_COREML_MODELS', f'{code_dir}/../../weights/coreml-refiner-fp32'),
+        checkpoint=ckpt_dir,
+        compute_units=os.environ.get('FOUNDATIONPOSE_COREML_COMPUTE_UNITS', 'CPU_AND_GPU'))
+    elif backend != 'torch':
+      raise ValueError(f'Unknown refiner backend: {backend}')
     logging.info("init done")
     self.last_trans_update = None
     self.last_rot_update = None
 
 
   @torch.inference_mode()
+  @profiled('refine')
   def predict(self, rgb, depth, K, ob_in_cams, xyz_map, normal_map=None, get_vis=False, mesh=None, mesh_tensors=None, glctx=None, mesh_diameter=None, iteration=5):
     '''
     @rgb: np array (H,W,3)
@@ -170,9 +187,10 @@ class PoseRefinePredictor:
     if mesh_tensors is None:
       mesh_tensors = make_mesh_tensors(mesh_centered)
 
-    rgb_tensor = torch.as_tensor(rgb, device=DEVICE, dtype=torch.float)
-    depth_tensor = torch.as_tensor(depth, device=DEVICE, dtype=torch.float)
-    xyz_map_tensor = torch.as_tensor(xyz_map, device=DEVICE, dtype=torch.float)
+    with stage('inputs_to_device'):
+      rgb_tensor = torch.as_tensor(rgb, device=DEVICE, dtype=torch.float)
+      depth_tensor = torch.as_tensor(depth, device=DEVICE, dtype=torch.float)
+      xyz_map_tensor = torch.as_tensor(xyz_map, device=DEVICE, dtype=torch.float)
     trans_normalizer = self.cfg['trans_normalizer']
     if not isinstance(trans_normalizer, float):
       trans_normalizer = torch.as_tensor(list(trans_normalizer), device=DEVICE, dtype=torch.float).reshape(1,3)
@@ -185,49 +203,51 @@ class PoseRefinePredictor:
         A = torch.cat([pose_data.rgbAs[b:b+bs].to(DEVICE), pose_data.xyz_mapAs[b:b+bs].to(DEVICE)], dim=1).float()
         B = torch.cat([pose_data.rgbBs[b:b+bs].to(DEVICE), pose_data.xyz_mapBs[b:b+bs].to(DEVICE)], dim=1).float()
         logging.info("forward start")
-        with torch.autocast(device_type=DEVICE, enabled=self.amp and DEVICE == 'cuda'):
-          output = self.model(A,B)
-        for k in output:
-          output[k] = output[k].float()
-        logging.info("forward done")
-        if self.cfg['trans_rep']=='tracknet':
-          if not self.cfg['normalize_xyz']:
-            trans_delta = torch.tanh(output["trans"])*trans_normalizer
+        with stage('network'):
+          with torch.autocast(device_type=DEVICE, enabled=self.amp and DEVICE == 'cuda'):
+            output = self.model(A,B)
+        with stage('pose_update'):
+          for k in output:
+            output[k] = output[k].float()
+          logging.info("forward done")
+          if self.cfg['trans_rep']=='tracknet':
+            if not self.cfg['normalize_xyz']:
+              trans_delta = torch.tanh(output["trans"])*trans_normalizer
+            else:
+              trans_delta = output["trans"]
+
+          elif self.cfg['trans_rep']=='deepim':
+            def project_and_transform_to_crop(centers):
+              uvs = (pose_data.Ks[b:b+bs]@centers.reshape(-1,3,1)).reshape(-1,3)
+              uvs = uvs/uvs[:,2:3]
+              uvs = (pose_data.tf_to_crops[b:b+bs]@uvs.reshape(-1,3,1)).reshape(-1,3)
+              return uvs[:,:2]
+
+            rot_delta = output["rot"]
+            z_pred = output['trans'][:,2]*pose_data.poseA[b:b+bs][...,2,3]
+            uvA_crop = project_and_transform_to_crop(pose_data.poseA[b:b+bs][...,:3,3])
+            uv_pred_crop = uvA_crop + output['trans'][:,:2]*self.cfg['input_resize'][0]
+            uv_pred = transform_pts(uv_pred_crop, pose_data.tf_to_crops[b:b+bs].inverse().to(DEVICE))
+            center_pred = torch.cat([uv_pred, torch.ones((len(rot_delta),1), dtype=torch.float, device=DEVICE)], dim=-1)
+            center_pred = (pose_data.Ks[b:b+bs].inverse().to(DEVICE)@center_pred.reshape(len(rot_delta),3,1)).reshape(len(rot_delta),3) * z_pred.reshape(len(rot_delta),1)
+            trans_delta = center_pred-pose_data.poseA[b:b+bs][...,:3,3]
+
           else:
             trans_delta = output["trans"]
 
-        elif self.cfg['trans_rep']=='deepim':
-          def project_and_transform_to_crop(centers):
-            uvs = (pose_data.Ks[b:b+bs]@centers.reshape(-1,3,1)).reshape(-1,3)
-            uvs = uvs/uvs[:,2:3]
-            uvs = (pose_data.tf_to_crops[b:b+bs]@uvs.reshape(-1,3,1)).reshape(-1,3)
-            return uvs[:,:2]
+          if self.cfg['rot_rep']=='axis_angle':
+            rot_mat_delta = torch.tanh(output["rot"])*self.cfg['rot_normalizer']
+            rot_mat_delta = so3_exp_map(rot_mat_delta).permute(0,2,1)
+          elif self.cfg['rot_rep']=='6d':
+            rot_mat_delta = rotation_6d_to_matrix(output['rot']).permute(0,2,1)
+          else:
+            raise RuntimeError
 
-          rot_delta = output["rot"]
-          z_pred = output['trans'][:,2]*pose_data.poseA[b:b+bs][...,2,3]
-          uvA_crop = project_and_transform_to_crop(pose_data.poseA[b:b+bs][...,:3,3])
-          uv_pred_crop = uvA_crop + output['trans'][:,:2]*self.cfg['input_resize'][0]
-          uv_pred = transform_pts(uv_pred_crop, pose_data.tf_to_crops[b:b+bs].inverse().to(DEVICE))
-          center_pred = torch.cat([uv_pred, torch.ones((len(rot_delta),1), dtype=torch.float, device=DEVICE)], dim=-1)
-          center_pred = (pose_data.Ks[b:b+bs].inverse().to(DEVICE)@center_pred.reshape(len(rot_delta),3,1)).reshape(len(rot_delta),3) * z_pred.reshape(len(rot_delta),1)
-          trans_delta = center_pred-pose_data.poseA[b:b+bs][...,:3,3]
+          if self.cfg['normalize_xyz']:
+            trans_delta *= (mesh_diameter/2)
 
-        else:
-          trans_delta = output["trans"]
-
-        if self.cfg['rot_rep']=='axis_angle':
-          rot_mat_delta = torch.tanh(output["rot"])*self.cfg['rot_normalizer']
-          rot_mat_delta = so3_exp_map(rot_mat_delta).permute(0,2,1)
-        elif self.cfg['rot_rep']=='6d':
-          rot_mat_delta = rotation_6d_to_matrix(output['rot']).permute(0,2,1)
-        else:
-          raise RuntimeError
-
-        if self.cfg['normalize_xyz']:
-          trans_delta *= (mesh_diameter/2)
-
-        B_in_cam = egocentric_delta_pose_to_pose(pose_data.poseA[b:b+bs], trans_delta=trans_delta, rot_mat_delta=rot_mat_delta)
-        B_in_cams.append(B_in_cam)
+          B_in_cam = egocentric_delta_pose_to_pose(pose_data.poseA[b:b+bs], trans_delta=trans_delta, rot_mat_delta=rot_mat_delta)
+          B_in_cams.append(B_in_cam)
 
       B_in_cams = torch.cat(B_in_cams, dim=0).reshape(len(ob_in_cams),4,4)
 

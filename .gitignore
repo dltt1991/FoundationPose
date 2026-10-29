@@ -6,6 +6,7 @@
 *.nbc
 *.nbi
 **/.venv/
+**/.venv-*/
 **/.env
 **/.env.*
 /upstream/debug/

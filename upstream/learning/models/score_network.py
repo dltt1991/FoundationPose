@@ -7,6 +7,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 
+from stage_profile import stage, profiled
 import os,sys
 import numpy as np
 code_dir = os.path.dirname(os.path.realpath(__file__))
@@ -82,11 +83,13 @@ class ScoreNetMultiPair(nn.Module):
     output = {}
     bs = A.shape[0]//L
     chunk = len(A) if DEVICE == 'cuda' else int(os.environ.get('FOUNDATIONPOSE_BATCH_SIZE', '8'))
-    feats = torch.cat([self.extract_feat(A[i:i+chunk], B[i:i+chunk])
-                       for i in range(0, len(A), chunk)], dim=0)   #(B*L, C)
-    x = feats.reshape(bs,L,-1)
-    x, _ = self.att_cross(x, x, x)
+    with stage('encode'):
+      feats = torch.cat([self.extract_feat(A[i:i+chunk], B[i:i+chunk])
+                         for i in range(0, len(A), chunk)], dim=0)   #(B*L, C)
+    with stage('cross_attention'):
+      x = feats.reshape(bs,L,-1)
+      x, _ = self.att_cross(x, x, x)
 
-    output['score_logit'] = self.linear(x).reshape(bs,L)  # (B,L)
+      output['score_logit'] = self.linear(x).reshape(bs,L)  # (B,L)
 
     return output

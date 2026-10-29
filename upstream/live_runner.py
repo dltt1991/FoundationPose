@@ -1,5 +1,6 @@
 """Pipelined RGB-D inference and main-thread OpenCV display."""
 from collections import deque
+from contextlib import nullcontext
 import csv
 import json
 import threading
@@ -28,6 +29,7 @@ def replay_offset(frame_id, first_id, index, capture_fps):
 def run_live(args, frames, est, out, to_origin, bbox):
     from run_portable import validate_frame, select_mask
     from Utils import draw_posed_3d_box, draw_xyz_axis
+    from stage_profile import StageProfile, device_synchronize
 
     first = next(frames)
     initial_time = time.perf_counter()
@@ -71,7 +73,11 @@ def run_live(args, frames, est, out, to_origin, bbox):
         validate_frame(rgb, depth, k, mask)
         start = time.perf_counter()
         if count == 0:
-            pose = est.register(K=k, rgb=rgb, depth=depth, ob_mask=mask, iteration=args.est_iters)
+            profiler = StageProfile(synchronize=lambda: device_synchronize(DEVICE)) if args.profile_init else None
+            with profiler or nullcontext():
+                pose = est.register(K=k, rgb=rgb, depth=depth, ob_mask=mask, iteration=args.est_iters)
+            if profiler is not None:
+                profiler.save(out / 'registration_profile.json')
         else:
             pose = est.track_one(K=k, rgb=rgb, depth=depth, iteration=args.track_iters)
         if DEVICE == 'mps':
