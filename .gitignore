@@ -1,0 +1,17 @@
+/.upstream-git/
+/.DS_Store
+**/.DS_Store
+**/__pycache__/
+*.py[cod]
+*.nbc
+*.nbi
+**/.venv/
+**/.env
+**/.env.*
+/upstream/debug/
+/upstream/demo_data/
+/upstream/downloads/
+/upstream/weights/
+/upstream/mycpp/build/
+/upstream/bundlesdf/mycuda/build/
+/*_paper.pdf

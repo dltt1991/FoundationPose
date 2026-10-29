@@ -1,0 +1,25 @@
+# Python 3.11; versions used on M4 / 24GB for this prototype.
+# No CUDA, nvdiffrast, PyTorch3D, Warp or mycpp build required.
+torch==2.15.0
+torchvision==0.29.2
+numpy==2.4.6
+numba==0.68.1
+scipy==1.17.1
+scikit-learn==1.9.1
+h5py==3.16.0
+joblib==1.6.0
+PyYAML==6.0.3
+ruamel.yaml==0.19.1
+opencv-python==5.0.0.93
+imageio==2.38.1
+open3d==0.20.0
+trimesh==5.2.0
+transformations==2026.1.18
+matplotlib==3.11.2
+pandas==3.1.0
+Pillow==13.0.0
+kornia==0.9.0
+omegaconf==2.4.0
+psutil==7.2.2
+tqdm==4.70.1
+gdown==6.4.2
