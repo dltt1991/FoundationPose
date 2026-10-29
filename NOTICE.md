@@ -19,3 +19,4 @@ https://github.com/NVlabs/FoundationPose ，基线提交 `a1b694b`。
 
 这些兼容改动不是 NVIDIA 官方发布的 macOS 后端。原有第三方资源的权利
 和许可归原作者所有。模型权重、官方演示数据和第三方 SDK 不随本仓库分发。
+- 实验分支增加可选Metal硬件光栅化，通过本机编译的Objective-C++共享库调用；保留Numba参考后端。

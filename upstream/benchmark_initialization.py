@@ -36,6 +36,7 @@ def main():
     parser.add_argument('--input', type=Path, help='Saved run directory; default is official mustard0 first frame.')
     parser.add_argument('--output', type=Path, required=True, help='A directory that must not already exist.')
     parser.add_argument('--device', choices=['mps', 'cpu'], default='mps')
+    parser.add_argument('--renderer', choices=['numba', 'metal'], default='numba', help='Optional macOS Metal rasterizer; default is the CPU reference.')
     parser.add_argument('--refiner-backend', choices=['torch', 'coreml'], default='torch')
     parser.add_argument('--coreml-models', type=Path, default=ROOT / 'weights/coreml-refiner-fp32')
     parser.add_argument('--coreml-compute-units', choices=['ALL', 'CPU_AND_GPU', 'CPU_AND_NE', 'CPU_ONLY'], default='CPU_AND_GPU')
@@ -46,6 +47,7 @@ def main():
     args = parser.parse_args()
     if min(args.runs, args.batch_size) < 1 or args.track_steps < 0:
         parser.error('Runs and batch size must be positive; track steps must be nonnegative.')
+    os.environ['FOUNDATIONPOSE_RENDERER'] = args.renderer
     os.environ['FOUNDATIONPOSE_DEVICE'] = args.device
     os.environ['FOUNDATIONPOSE_BATCH_SIZE'] = str(args.batch_size)
     os.environ['FOUNDATIONPOSE_REFINER_BACKEND'] = args.refiner_backend
@@ -65,7 +67,7 @@ def main():
     with setup, stage('setup'):
         est = FoundationPose(mesh.vertices, mesh.vertex_normals, mesh=mesh, debug=0, debug_dir=str(out))
     setup.save(out / 'setup_profile.json')
-    result = dict(device=args.device, renderer='numba', refiner_backend=args.refiner_backend,
+    result = dict(device=args.device, renderer=args.renderer, refiner_backend=args.refiner_backend,
                   coreml_compute_units=args.coreml_compute_units if args.refiner_backend == 'coreml' else None,
                   torch=torch.__version__,
                   input=str(args.input) if args.input else 'official mustard0 first frame',

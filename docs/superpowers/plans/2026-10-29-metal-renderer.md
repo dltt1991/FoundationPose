@@ -10,8 +10,8 @@
 
 ## 步骤
 
-- [ ] 写 `tests/test_metal_renderer.py`，继承现有几何/纹理测试并选Metal；运行确认因后端缺失失败。
-- [ ] 实现原生顶点/片元渲染与ctypes包装；运行上述测试，比较CPU/GPU几何内部误差。
-- [ ] 在run_portable与benchmark_initialization增加 `--renderer {numba,metal}` 并记录选择；拒绝CUDA+Metal。
-- [ ] 相同保存首帧运行普通A/B及分段计时；增加静态跟踪检查，确认候选和位姿差异。
-- [ ] 更新使用说明与报告，完整测试、代码审查、提交推送分支。
+- [x] 写 `tests/test_metal_renderer.py`，继承现有几何/纹理测试并选Metal；运行确认因后端缺失失败。
+- [x] 实现原生顶点/片元渲染与ctypes包装；运行上述测试，比较CPU/GPU几何内部误差。
+- [x] 在run_portable与benchmark_initialization增加 `--renderer {numba,metal}` 并记录选择；拒绝CUDA+Metal。
+- [x] 相同保存首帧运行普通A/B及分段计时；增加静态跟踪检查，确认候选和位姿差异。
+- [x] 更新使用说明与报告，完整测试、代码审查、提交推送分支。

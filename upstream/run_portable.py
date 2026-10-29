@@ -5,6 +5,7 @@ import csv
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 import time
 
@@ -185,6 +186,7 @@ def main():
     parser.add_argument('--mesh-scale', type=float, default=1., help='Use 0.001 for a mesh authored in millimetres.')
     parser.add_argument('--mesh-color', type=int, nargs=3, metavar=('R', 'G', 'B'), help='Override mesh appearance with an RGB color in 0–255; useful for untextured STL.')
     parser.add_argument('--device', choices=['auto', 'mps', 'cpu', 'cuda'], default='auto')
+    parser.add_argument('--renderer', choices=['numba', 'metal'], default='numba', help='Optional macOS Metal rasterizer; default is the CPU reference.')
     parser.add_argument('--refiner-backend', choices=['torch', 'coreml'], default='torch', help='Optional native Core ML refiner prototype; scoring remains PyTorch.')
     parser.add_argument('--coreml-models', type=Path, default=ROOT / 'weights/coreml-refiner-fp32')
     parser.add_argument('--coreml-compute-units', choices=['ALL', 'CPU_AND_GPU', 'CPU_AND_NE', 'CPU_ONLY'], default='CPU_AND_GPU')
@@ -204,6 +206,8 @@ def main():
     parser.add_argument('--max-depth', type=float, default=3., help='RealSense maximum accepted depth in metres.')
     parser.add_argument('--check', action='store_true', help='Check weights, inputs and selected torch backend without inference.')
     args = parser.parse_args()
+    if args.renderer == 'metal' and (args.device == 'cuda' or sys.platform != 'darwin'):
+        parser.error('Metal renderer requires macOS with cpu or mps; CUDA is unsupported.')
     if args.refiner_backend == 'coreml' and args.device == 'cuda':
         parser.error('Core ML requires cpu or mps on macOS; CUDA is unsupported.')
     if args.mesh_color is not None and any(c < 0 or c > 255 for c in args.mesh_color):
@@ -216,6 +220,7 @@ def main():
         parser.error('Batch size, iteration counts and mesh scale must be positive; max-frames must be nonnegative.')
     if args.source == 'realsense' and args.mesh is None:
         parser.error('--mesh is required for RealSense; use the model of the physical object you will track.')
+    os.environ['FOUNDATIONPOSE_RENDERER'] = args.renderer
     os.environ['FOUNDATIONPOSE_DEVICE'] = args.device
     os.environ['FOUNDATIONPOSE_BATCH_SIZE'] = str(args.batch_size)
     os.environ['FOUNDATIONPOSE_REFINER_BACKEND'] = args.refiner_backend
@@ -240,6 +245,9 @@ def main():
         if importlib.util.find_spec('pyrealsense2') is None:
             parser.error('pyrealsense2 is unavailable. See README_MAC.md.')
     print(f'device={DEVICE}; torch={torch.__version__}; mesh={mesh_path}', flush=True)
+    if args.renderer == 'metal':
+        from metal_renderer import library
+        library()
     if args.check:
         return
     from estimater import FoundationPose

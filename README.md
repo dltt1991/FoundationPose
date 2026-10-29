@@ -4,7 +4,7 @@
 
 当前采用 **model-based** 路径：提供与实物一致的三维网格，首帧手动圈选物体，完成初始位姿估计后持续跟踪。沿用官方预训练权重，不需要为本项目中的阶梯件重新训练。
 
-本实验分支增加了可选首帧分段计时与Core ML FP32细化网络，默认仍使用Torch/MPS。相同真实首帧热运行约24.9s→23.9s，收益约4%，没有将其设为默认。导出、基准方法及限制见 [原生原型说明](upstream/docs/native-prototype.md)。
+本实验分支增加可选Metal渲染：同一真实首帧初始化热运行约24.6s→16.6s，耗时下降约33%。使用 `sudo ./run_sr300.sh --renderer metal` 启用，默认仍为Numba＋Torch；要求macOS15+及Xcode Command Line Tools。使用方法、位姿差异与性能限制见 [Metal渲染说明](upstream/docs/metal-renderer.md)。可选Core ML FP32细化网络见 [原生原型说明](upstream/docs/native-prototype.md)。
 
 ## 已验证的能力
 

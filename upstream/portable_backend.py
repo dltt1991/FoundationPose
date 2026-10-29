@@ -208,13 +208,23 @@ def render(K=None, H=None, W=None, ob_in_cams=None, glctx=None, context=None,
     pos, normals, uv, tex, colors, K = arrays
     ld = np.asarray(light_dir, dtype=np.float32)
     ld /= max(float(np.linalg.norm(ld)), 1e-12)
-    with stage('rasterize_cpu'):
-        outputs = [_rasterize(pos, np.asarray(faces, dtype=np.int64), normals, uv, tex, colors, textured,
-                            K, pose.astype(np.float32), crop.astype(np.float32), int(height), int(width),
-                            use_light, ld, w_ambient, w_diffuse) for pose, crop in zip(poses, crops)]
+    renderer = os.environ.get('FOUNDATIONPOSE_RENDERER', 'numba')
+    if renderer == 'metal':
+        from metal_renderer import rasterize
+        with stage('rasterize_metal'):
+            arrays_out = rasterize(pos, faces, normals, uv, tex, colors, textured, K, poses, crops,
+                                   int(height), int(width), use_light, ld, w_ambient, w_diffuse)
+    elif renderer == 'numba':
+        with stage('rasterize_cpu'):
+            outputs = [_rasterize(pos, np.asarray(faces, dtype=np.int64), normals, uv, tex, colors, textured,
+                                K, pose.astype(np.float32), crop.astype(np.float32), int(height), int(width),
+                                use_light, ld, w_ambient, w_diffuse) for pose, crop in zip(poses, crops)]
+        arrays_out = [np.stack(items) for items in zip(*outputs)]
+    else:
+        raise ValueError(f'Unknown portable renderer: {renderer}')
     device = ob_in_cams.device if torch.is_tensor(ob_in_cams) else DEVICE
     with stage('outputs_to_device'):
-        rgb, depth, normal, xyz = [torch.as_tensor(np.stack(items), device=device) for items in zip(*outputs)]
+        rgb, depth, normal, xyz = [torch.as_tensor(a, device=device) for a in arrays_out]
     if extra is not None:
         extra['xyz_map'] = xyz
     return rgb, depth, normal if get_normal or use_light else None

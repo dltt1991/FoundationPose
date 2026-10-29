@@ -1,0 +1,271 @@
+{
+  "machine": "Apple M4, 24 GB unified memory",
+  "protocol": "Same saved D455 frame of white 180x140x38 mm SR300 step target; 252 candidates, 5 registration iterations, batch 8. Timings are small-sample observations; not ground-truth accuracy or live-camera FPS.",
+  "runs": {
+    "metal-numba-recheck": {
+      "renderer": "numba",
+      "refiner_backend": "torch",
+      "coreml_compute_units": null,
+      "runs": [
+        {
+          "index": 0,
+          "instrumented": false,
+          "seconds": 24.476551374886185,
+          "selected_candidate": 75
+        },
+        {
+          "index": 1,
+          "instrumented": false,
+          "seconds": 24.597941249841824,
+          "selected_candidate": 75
+        }
+      ],
+      "translation_difference_mm": 0.0,
+      "rotation_difference_degrees": 4.436800454187291e-15,
+      "static_tracking": {
+        "steps": 30,
+        "iterations": 2,
+        "median_seconds": 0.06210881262086332,
+        "translation_difference_mm": 0.0,
+        "rotation_difference_degrees": 5.613610911255317e-15
+      }
+    },
+    "metal-final": {
+      "renderer": "metal",
+      "refiner_backend": "torch",
+      "coreml_compute_units": null,
+      "runs": [
+        {
+          "index": 0,
+          "instrumented": false,
+          "seconds": 16.600003791041672,
+          "selected_candidate": 104
+        },
+        {
+          "index": 1,
+          "instrumented": false,
+          "seconds": 16.558687333017588,
+          "selected_candidate": 104
+        },
+        {
+          "index": 2,
+          "instrumented": true,
+          "seconds": 16.981842417037115,
+          "selected_candidate": 104
+        }
+      ],
+      "translation_difference_mm": 0.13775464298781517,
+      "rotation_difference_degrees": 0.06523231778534752,
+      "static_tracking": {
+        "steps": 30,
+        "iterations": 2,
+        "median_seconds": 0.0556303538614884,
+        "translation_difference_mm": 0.03346578954586991,
+        "rotation_difference_degrees": 0.008041723210196952
+      }
+    },
+    "metal-coreml": {
+      "renderer": "metal",
+      "refiner_backend": "coreml",
+      "coreml_compute_units": "ALL",
+      "runs": [
+        {
+          "index": 0,
+          "instrumented": false,
+          "seconds": 16.482105792034417,
+          "selected_candidate": 225
+        },
+        {
+          "index": 1,
+          "instrumented": false,
+          "seconds": 16.150082499952987,
+          "selected_candidate": 225
+        }
+      ],
+      "translation_difference_mm": 0.0259418988217939,
+      "rotation_difference_degrees": 0.03250843947301406,
+      "static_tracking": {
+        "steps": 30,
+        "iterations": 2,
+        "median_seconds": 0.056105187512002885,
+        "translation_difference_mm": 0.036241440669637144,
+        "rotation_difference_degrees": 0.017288147256045952
+      }
+    }
+  },
+  "metal_stage_profile": {
+    "register/depth_preprocess": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.010905415983870625,
+      "exclusive_seconds": 0.010905415983870625
+    },
+    "register/candidates": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.001958042150363326,
+      "exclusive_seconds": 0.001958042150363326
+    },
+    "register/refine/inputs_to_device": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.0013907921966165304,
+      "exclusive_seconds": 0.0013907921966165304
+    },
+    "register/refine/prepare/crop_geometry": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.00511554186232388,
+      "exclusive_seconds": 0.00511554186232388
+    },
+    "register/refine/prepare/render/poses_to_cpu": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.0022253328934311867,
+      "exclusive_seconds": 0.0022253328934311867
+    },
+    "register/refine/prepare/render/rasterize_metal": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.40711837401613593,
+      "exclusive_seconds": 0.40711837401613593
+    },
+    "register/refine/prepare/render/outputs_to_device": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.0578967509791255,
+      "exclusive_seconds": 0.0578967509791255
+    },
+    "register/refine/prepare/render": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.46804070891812444,
+      "exclusive_seconds": 0.0008002510294318199
+    },
+    "register/refine/prepare/warp": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.18569433270022273,
+      "exclusive_seconds": 0.18569433270022273
+    },
+    "register/refine/prepare/normalize": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.24220949923619628,
+      "exclusive_seconds": 0.24220949923619628
+    },
+    "register/refine/prepare": {
+      "calls": 5,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.9402268319390714,
+      "exclusive_seconds": 0.03916674922220409
+    },
+    "register/refine/network": {
+      "calls": 160,
+      "failed_calls": 0,
+      "inclusive_seconds": 12.30906087346375,
+      "exclusive_seconds": 12.30906087346375
+    },
+    "register/refine/pose_update": {
+      "calls": 160,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.18682279088534415,
+      "exclusive_seconds": 0.18682279088534415
+    },
+    "register/refine": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 13.574232959188521,
+      "exclusive_seconds": 0.13673167070373893
+    },
+    "register/score/inputs_to_device": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.0014142501167953014,
+      "exclusive_seconds": 0.0014142501167953014
+    },
+    "register/score/prepare/crop_geometry": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.0006700002122670412,
+      "exclusive_seconds": 0.0006700002122670412
+    },
+    "register/score/prepare/render/poses_to_cpu": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.00038958294317126274,
+      "exclusive_seconds": 0.00038958294317126274
+    },
+    "register/score/prepare/render/rasterize_metal": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.06604154198430479,
+      "exclusive_seconds": 0.06604154198430479
+    },
+    "register/score/prepare/render/outputs_to_device": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.013547125039622188,
+      "exclusive_seconds": 0.013547125039622188
+    },
+    "register/score/prepare/render": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.08009058283641934,
+      "exclusive_seconds": 0.00011233286932110786
+    },
+    "register/score/prepare/warp": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.037834249902516603,
+      "exclusive_seconds": 0.037834249902516603
+    },
+    "register/score/prepare/normalize": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.9803997909184545,
+      "exclusive_seconds": 0.9803997909184545
+    },
+    "register/score/prepare": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 1.1066112918779254,
+      "exclusive_seconds": 0.0076166680082678795
+    },
+    "register/score/encode": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 2.1222658751066774,
+      "exclusive_seconds": 2.1222658751066774
+    },
+    "register/score/cross_attention": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 0.0018236669711768627,
+      "exclusive_seconds": 0.0018236669711768627
+    },
+    "register/score": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 3.248057125136256,
+      "exclusive_seconds": 0.015942041063681245
+    },
+    "register": {
+      "calls": 1,
+      "failed_calls": 0,
+      "inclusive_seconds": 16.981802999973297,
+      "exclusive_seconds": 0.14664945751428604
+    }
+  },
+  "same_pose_render_comparison": {
+    "poses": 19,
+    "output_shape": [
+      160,
+      160
+    ],
+    "silhouette_iou": 0.9998710426204139,
+    "overlapping_silhouette_interior_depth_p99_m": 2.9730201e-05,
+    "overlapping_silhouette_interior_depth_max_m": 0.008150101,
+    "note": "One-pixel silhouette erosion; internal occlusion boundaries remain, so maxima can be millimetres. Not ground-truth error."
+  }
+}
